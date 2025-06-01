@@ -188,8 +188,8 @@
 
     // Update background image based on selection
     document.body.style.backgroundImage = timeOfDay === "night"
-      ? "url('images/Copilot_20250531_1249....png')"  // Your nighttime image
-      : "url('images/Copilot_20250531_1247....png')";  // Your daytime image
+      ? "url('images/Copilot_20250531_124955....png')"  // Your nighttime image
+      : "url('images/Copilot_20250531_124742....png')";  // Your daytime image
   });
 });
     // Update time of day setting and change background accordingly
