@@ -677,9 +677,7 @@ window.addEventListener('DOMContentLoaded', function() {
       document.getElementById('copySaveBtn').style.display = mode === 'export' ? '' : 'none';
       document.getElementById('downloadSaveBtn').style.display = mode === 'export' ? '' : 'none';
       document.getElementById('importSaveBtn').style.display = mode === 'import' ? '' : 'none';
-      document.getElementById('saveTextarea').value = mode === 'export' ? JSON.stringify({
-        totalClicks, rarestFind, log, achievements: achievements.map(a => ({...a})), points, unlockedRarities, timer
-      }) : '';
+      document.getElementById('saveTextarea').value = mode === 'export' ? encodeSave(getSaveData()) : '';
       document.getElementById('importError').textContent = '';
     });
   });
@@ -837,12 +835,13 @@ function loadGameFromStorage() {
     log = Array.isArray(data.log) ? data.log : [];
     timer = data.timer || 0;
     stage = data.stage || 1;
-    autoClickers = data.autoClickers || 0;
-    doublePointsActive = !!data.doublePointsActive;
-    goldenClickActive = !!data.goldenClickActive;
-    luckBoostActive = !!data.luckBoostActive;
-    timeFreezeActive = !!data.timeFreezeActive;
-    goldenModeActive = !!data.goldenModeActive;
+    // Restore shop status for all buffs
+    autoClickers = (data.shopStatus && typeof data.shopStatus.autoClickers !== 'undefined') ? data.shopStatus.autoClickers : (data.autoClickers || 0);
+    doublePointsActive = (data.shopStatus && typeof data.shopStatus.doublePointsActive !== 'undefined') ? data.shopStatus.doublePointsActive : !!data.doublePointsActive;
+    goldenClickActive = (data.shopStatus && typeof data.shopStatus.goldenClickActive !== 'undefined') ? data.shopStatus.goldenClickActive : !!data.goldenClickActive;
+    luckBoostActive = (data.shopStatus && typeof data.shopStatus.luckBoostActive !== 'undefined') ? data.shopStatus.luckBoostActive : !!data.luckBoostActive;
+    timeFreezeActive = (data.shopStatus && typeof data.shopStatus.timeFreezeActive !== 'undefined') ? data.shopStatus.timeFreezeActive : !!data.timeFreezeActive;
+    goldenModeActive = (data.shopStatus && typeof data.shopStatus.goldenModeActive !== 'undefined') ? data.shopStatus.goldenModeActive : !!data.goldenModeActive;
     // Restore achievements
     if (data.achievements) {
       achievements.forEach(a => {
@@ -875,6 +874,7 @@ function getSaveData() {
     goldenModeActive,
     stage,
     timer,
+    secondsPlayed: timer,
     backgrounds: (typeof backgrounds !== 'undefined' ? backgrounds : []),
     settings: (typeof settings !== 'undefined' ? settings : {}),
     gameVersion: GAME_VERSION,
@@ -882,7 +882,7 @@ function getSaveData() {
   };
 }
 function checksum(str) {
-  // Simple checksum: sum char codes
+  // Simple checksum: sum char codes (not strong encryption, but basic tamper check)
   let c1 = 0, c2 = 5381;
   for (let i = 0; i < str.length; i++) {
     c1 = (c1 + str.charCodeAt(i)) % 1000000007;
@@ -892,6 +892,7 @@ function checksum(str) {
   return [c1.toString(36), c2.toString(36)];
 }
 function encodeSave(data) {
+  // Encrypt (obfuscate) with base64 and add checksums
   const json = JSON.stringify(data);
   const b64 = btoa(unescape(encodeURIComponent(json)));
   const [c1, c2] = checksum(b64);
@@ -911,9 +912,8 @@ function decodeSave(str) {
     return { error: 'Corrupt save data.' };
   }
 }
-
-// --- Export/Import Save ---
 function exportSave() {
+  // Always use encodeSave to export with base64 and checksums
   const saveStr = encodeSave(getSaveData());
   document.getElementById('saveTextarea').value = saveStr;
   document.getElementById('copySaveBtn').style.display = '';
@@ -999,9 +999,7 @@ window.addEventListener('DOMContentLoaded', function() {
       document.getElementById('copySaveBtn').style.display = mode === 'export' ? '' : 'none';
       document.getElementById('downloadSaveBtn').style.display = mode === 'export' ? '' : 'none';
       document.getElementById('importSaveBtn').style.display = mode === 'import' ? '' : 'none';
-      document.getElementById('saveTextarea').value = mode === 'export' ? JSON.stringify({
-        totalClicks, rarestFind, log, achievements: achievements.map(a => ({...a})), points, unlockedRarities, timer
-      }) : '';
+      document.getElementById('saveTextarea').value = mode === 'export' ? encodeSave(getSaveData()) : '';
       document.getElementById('importError').textContent = '';
     });
   });
@@ -1076,9 +1074,7 @@ window.addEventListener('DOMContentLoaded', function() {
       document.getElementById('copySaveBtn').style.display = mode === 'export' ? '' : 'none';
       document.getElementById('downloadSaveBtn').style.display = mode === 'export' ? '' : 'none';
       document.getElementById('importSaveBtn').style.display = mode === 'import' ? '' : 'none';
-      document.getElementById('saveTextarea').value = mode === 'export' ? JSON.stringify({
-        totalClicks, rarestFind, log, achievements: achievements.map(a => ({...a})), points, unlockedRarities, timer
-      }) : '';
+      document.getElementById('saveTextarea').value = mode === 'export' ? encodeSave(getSaveData()) : '';
       document.getElementById('importError').textContent = '';
     });
   });

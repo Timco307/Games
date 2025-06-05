@@ -2,114 +2,187 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Rarity Clicker - Multi Model/Version</title>
-  <link rel="icon" type="image/x-icon" href="/favicon.ico">
-  <link rel="stylesheet" href="styles.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rarity Clicker - Home</title>
+  <!-- Using the Chewy font for that playful vibe -->
+  <link href="https://fonts.googleapis.com/css2?family=Chewy&display=swap" rel="stylesheet" />
+  <style>
+    /* Reset defaults */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    /* Background: gradient red to blue to yellow */
+    body {
+      background: linear-gradient(90deg, red, blue, yellow);
+      font-family: 'Chewy', cursive, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    /* Header styling */
+    header {
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: 4rem;
+      margin-bottom: 10px;
+    }
+    .sub-header {
+      font-size: 1.5rem;
+    }
+    /* Container for all game options arranged vertically */
+    .button-container {
+      margin-top: 30px;
+    }
+    .game-option {
+      margin-bottom: 30px;
+    }
+    /* Button styling */
+    .game-option a.btn {
+      padding: 15px 30px;
+      min-width: 250px;
+      text-decoration: none;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.2rem;
+      transition: transform 0.2s ease-in-out;
+      display: inline-block;
+    }
+    .game-option a.btn:hover {
+      transform: scale(1.05);
+    }
+    /* Specific button color schemes */
+    .btn-og {
+      background: linear-gradient(to right, red, blue);
+      color: black;
+    }
+    .btn-x {
+      background-color: white;
+      color: black;
+    }
+    .btn-y {
+      background: linear-gradient(to right, red, yellow);
+      color: black;
+    }
+    .btn-z {
+      background: linear-gradient(to right, blue, yellow);
+      color: black;
+    }
+    /* Description text styling: Black Chewy font */
+    .description {
+      color: black;
+      font-size: 1.1rem;
+      margin-top: 10px;
+    }
+    /* Footer styling */
+    footer {
+      margin-top: 20px;
+      font-size: 1rem;
+    }
+    /* For header, sub-header, & footer alternating colored letters */
+    .colored-letter {
+      display: inline;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+    }
+  </style>
 </head>
 <body>
-  <div id="header">
-    <div id="timer">Time: 0s</div>
-    <div id="settingsIcon">⚙️</div>
-    <div id="shopIcon">🛒</div>
-  </div>
-  <div id="settingsModal" class="modal">
-    <div class="modal-content">
-      <span class="close" onclick="toggleSettingsModal()">&times;</span>
-      <h3>Settings</h3>
-      <div class="stats-section">
-        <h4>Stats for Nerds</h4>
-        <p>Total Clicks: <span id="totalClicks">0</span></p>
-        <p>Rarest Find: <span id="rarestFind">None</span></p>
-        <div>
-          <h5>Rarity Chances:</h5>
-          <ul id="chancesList"></ul>
-        </div>
-      </div>
-      <hr>
-      <div class="save-section">
-        <h4>Export / Import Save</h4>
-        <button onclick="openSaveModal('export')">Export Save</button>
-        <button onclick="openSaveModal('import')">Import Save</button>
-      </div>
-      <hr>
-      <div class="reset-section">
-        <button id="softResetButton" class="soft-reset-btn" onclick="softResetGame()">Soft Reset</button>
-        <button id="resetButton" onclick="resetGame()">HARD RESET</button>
-      </div>
-      <hr>
-      <div>
-        <b>Game Version:</b> <span id="gameVersion"></span> &nbsp; <b>Model:</b> <span id="gameModel"></span>
-      </div>
+  <header>
+    <h1 id="header-text">Hello!</h1>
+    <p id="sub-header-text" class="sub-header">Welcome to Rarity Clicker. Please select your game:</p>
+  </header>
+
+  <div class="button-container">
+    <!-- Rarity Clicker OG -->
+    <div class="game-option" id="game-og">
+      <a href="OG/" class="btn btn-og">Rarity Clicker OG</a>
+      <p class="description">
+        This is the original version of Rarity Clicker. You click a button and it gives you a rarity. The main function of the game is to test your luck. There is also a shop full of items and custom backgrounds.
+      </p>
+    </div>
+    <!-- Rarity Clicker X -->
+    <div class="game-option" id="game-x">
+      <a href="X/" class="btn btn-x">Rarity Clicker X</a>
+      <p class="description">
+        This version of Rarity Clicker is a watered down version of the classic Rarity Clicker. It still maintains the main functions of the classic Rarity Clicker, but it is meant for old devices that may not be able to run the classic Rarity Clicker.
+      </p>
+    </div>
+    <!-- Rarity Clicker Y -->
+    <div class="game-option" id="game-y">
+      <a href="Y/" class="btn btn-y">Rarity Clicker Y</a>
+      <p class="description">
+        Rarity Clicker Y takes the classic experience and cranks it up! With expanded rarities, a bigger shop stocked with new items, and more customization options, this version lets you fine-tune your luck like never before.
+      </p>
+    </div>
+    <!-- Rarity Clicker Z -->
+    <div class="game-option" id="game-z">
+      <a href="Z/" class="btn btn-z">Rarity Clicker Z</a>
+      <p class="description">
+        Rarity Clicker Z introduces a fresh take on the classic formula, developed by a different creator. With more rarities and unique mechanics, this version brings new challenges and unexpected twists to test your luck in exciting ways.
+      </p>
     </div>
   </div>
-  <div id="shopModal" class="modal" style="display:none;">
-    <div class="modal-content shop-modal-content">
-      <span class="close" onclick="if(window.toggleShopModal)window.toggleShopModal()">&times;</span>
-      <h3>Shop Upgrades</h3>
-      <p>Points: <span id="pointsDisplayShop">0</span></p>
-      <button id="autoClickerBtn">Buy Auto Clicker (50 pts)</button>
-      <button id="doublePointsBtn">Buy Double Points (150 pts)</button>
-      <button id="goldenClickBtn">Buy Golden Click (200 pts)</button>
-      <button id="luckBoostBtn">Buy Luck Boost (300 pts)</button>
-      <button id="timeFreezeBtn">Buy Time Freeze (200 pts)</button>
-      <button id="goldenModeBtn">Buy Golden Mode (1000 pts)</button>
-      <div class="shop-status">
-        <p>Auto Clickers: <span id="autoCountShop">0</span></p>
-        <p>Double Points: <span id="doubleStatusShop">Off</span></p>
-        <p>Golden Click: <span id="goldenStatusShop">Not Ready</span></p>
-        <p>Luck Boost: <span id="luckBoostStatusShop">Inactive</span></p>
-        <p>Time Freeze: <span id="timeFreezeStatusShop">Inactive</span></p>
-        <p>Golden Mode: <span id="goldenModeStatusShop">Inactive</span></p>
-      </div>
-      <button id="nextStageBtn" style="margin-top:16px;">Next Stage</button>
-      <div style="margin-top:8px;font-weight:bold;">Stage: <span id="stageDisplay">1</span></div>
-    </div>
-  </div>
-  <button id="clickButton" style="z-index:2;position:relative;">Click Me!</button>
-  <div id="resultContainer">
-    <p id="result"></p>
-  </div>
-  <div class="center-flex-row">
-    <div style="flex:1;min-width:220px;">
-      <ul id="log" class="log-list" style="max-height:400px;overflow:auto;"><li id="logFallback">No finds yet. Start clicking!</li></ul>
-    </div>
-    <div style="flex:1;min-width:220px;">
-      <div id="unlockedRaritiesBox" style="margin:0 0 24px 0;padding:10px;border:2px solid #888;border-radius:8px;background:#f8f8ff;max-width:400px;">
-        <b>Rarities You've Unlocked:</b>
-        <div id="unlockedRaritiesList" style="margin-top:6px;font-size:15px;"></div>
-      </div>
-      <div class="achievement-list">
-        <h2 id="achievementsHeader" style="cursor:pointer;">Achievements <span style="font-size:0.7em;">(click to collapse/expand)</span></h2>
-        <div id="achievementsSection">
-          <div id="achievementsContainer"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <noscript><div style="color:red;font-weight:bold;text-align:center;">JavaScript is required for this game to work.</div></noscript>
-  <div id="saveModal" class="modal">
-    <div class="modal-content save-modal-content">
-      <span class="close" onclick="closeSaveModal()">&times;</span>
-      <h3 id="saveModalTitle">Export/Import Save</h3>
-      <textarea id="saveTextarea" rows="8" style="width:95%;margin-top:10px;"></textarea>
-      <div style="margin:10px 0;">
-        <button id="copySaveBtn" onclick="copySaveToClipboard()" style="display:none;">Copy to Clipboard</button>
-        <button id="downloadSaveBtn" onclick="downloadSave()" style="display:none;">Download .txt</button>
-        <button id="importSaveBtn" onclick="importSave()" style="display:none;">Import</button>
-      </div>
-      <div style="font-size:14px;color:#a22" id="importError"></div>
-    </div>
-  </div>
-  <div id="cheaterOverlay">
-    <div class="cheater-message">
-      <h1>CHEATER</h1>
-      <p>You have modified your save file or tried to load a save from another model.<br>THAT IS NOT ALLOWED.</p>
-      <p>From this point on you can only reset to the start.</p>
-      <button id="resetButtonCheater" onclick="resetGame()" style="background:#ff4d4d;color:white;font-size:22px;padding:16px 40px;border-radius:20px;">RESET</button>
-    </div>
-  </div>
-  <div id="buffTimers" style="display:flex;gap:16px;justify-content:center;margin:10px 0 0 0;"></div>
-  <script src="main.js"></script>
+
+  <footer>
+    <p id="footer-text">©2025 sirco-team and INNOVEXA</p>
+  </footer>
+
+  <script>
+    // Function to wrap each character in a span with alternating colors (for header, sub-header & footer)
+    function colorizeText(elementId, colors) {
+      var element = document.getElementById(elementId);
+      if (!element) return;
+      var text = element.textContent;
+      var coloredText = "";
+      var colorIndex = 0;
+      for (var i = 0; i < text.length; i++) {
+        var char = text.charAt(i);
+        coloredText += '<span class="colored-letter" style="color:' + colors[colorIndex] + ';">' + char + '</span>';
+        colorIndex = (colorIndex + 1) % colors.length;
+      }
+      element.innerHTML = coloredText;
+    }
+
+    // Colors used for the header, sub-header, and footer alternating effect
+    var colors = ["#B22222", "#4169E1", "#DAA520"];
+    colorizeText("header-text", colors);
+    colorizeText("sub-header-text", colors);
+    colorizeText("footer-text", colors);
+
+    // Device detection: redirect old devices to Rarity Clicker X
+    function isOldDevice() {
+      var ua = navigator.userAgent;
+      var isOld = false;
+      
+      // iOS detection: OS 11 or earlier
+      var iOSMatch = ua.match(/OS (\d+)_?(\d+)?/);
+      if (iOSMatch && parseInt(iOSMatch[1], 10) <= 11) {
+        isOld = true;
+      }
+      
+      // Windows detection: Windows 7 is NT 6.1 or earlier
+      var winMatch = ua.match(/Windows NT (\d+\.\d+)/);
+      if (winMatch) {
+        var version = parseFloat(winMatch[1]);
+        if (version <= 6.1) {
+          isOld = true;
+        }
+      }
+      
+      // Android detection: Android 7 or earlier
+      var androidMatch = ua.match(/Android (\d+)\.?(\d+)?/);
+      if (androidMatch && parseInt(androidMatch[1], 10) <= 7) {
+        isOld = true;
+      }
+      
+      return isOld;
+    }
+    
+    if (isOldDevice()) {
+      window.location.href = "https://example.com";
+    }
+  </script>
 </body>
 </html>
+
