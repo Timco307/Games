@@ -10,8 +10,8 @@
 <body>
   <div id="header">
     <div id="timer">Time: 0s</div>
-    <div id="settingsIcon" onclick="toggleSettingsModal()">⚙️</div>
-    <div id="shopIcon" onclick="toggleShopModal()">🛒</div>
+    <div id="settingsIcon">⚙️</div>
+    <div id="shopIcon">🛒</div>
   </div>
   <div id="settingsModal" class="modal">
     <div class="modal-content">
@@ -62,21 +62,32 @@
         <p>Time Freeze: <span id="timeFreezeStatusShop">Inactive</span></p>
         <p>Golden Mode: <span id="goldenModeStatusShop">Inactive</span></p>
       </div>
+      <button id="nextStageBtn" style="margin-top:16px;">Next Stage</button>
+      <div style="margin-top:8px;font-weight:bold;">Stage: <span id="stageDisplay">1</span></div>
     </div>
   </div>
   <button id="clickButton" style="z-index:2;position:relative;">Click Me!</button>
   <div id="resultContainer">
     <p id="result"></p>
   </div>
-  <h2 style="margin-top:32px;">Log of Finds</h2>
-  <ul id="log" class="log-list"><li id="logFallback">No finds yet. Start clicking!</li></ul>
-  <noscript><div style="color:red;font-weight:bold;text-align:center;">JavaScript is required for this game to work.</div></noscript>
-  <div class="achievement-list">
-    <h2 id="achievementsHeader" style="cursor:pointer;">Achievements <span style="font-size:0.7em;">(click to collapse/expand)</span></h2>
-    <div id="achievementsSection">
-      <div id="achievementsContainer"></div>
+  <div class="center-flex-row">
+    <div style="flex:1;min-width:220px;">
+      <ul id="log" class="log-list" style="max-height:400px;overflow:auto;"><li id="logFallback">No finds yet. Start clicking!</li></ul>
+    </div>
+    <div style="flex:1;min-width:220px;">
+      <div id="unlockedRaritiesBox" style="margin:0 0 24px 0;padding:10px;border:2px solid #888;border-radius:8px;background:#f8f8ff;max-width:400px;">
+        <b>Rarities You've Unlocked:</b>
+        <div id="unlockedRaritiesList" style="margin-top:6px;font-size:15px;"></div>
+      </div>
+      <div class="achievement-list">
+        <h2 id="achievementsHeader" style="cursor:pointer;">Achievements <span style="font-size:0.7em;">(click to collapse/expand)</span></h2>
+        <div id="achievementsSection">
+          <div id="achievementsContainer"></div>
+        </div>
+      </div>
     </div>
   </div>
+  <noscript><div style="color:red;font-weight:bold;text-align:center;">JavaScript is required for this game to work.</div></noscript>
   <div id="saveModal" class="modal">
     <div class="modal-content save-modal-content">
       <span class="close" onclick="closeSaveModal()">&times;</span>
@@ -99,96 +110,6 @@
     </div>
   </div>
   <div id="buffTimers" style="display:flex;gap:16px;justify-content:center;margin:10px 0 0 0;"></div>
-  <script>
-    // --- UI Function Stubs ---
-    function openSaveModal(mode) { console.log('openSaveModal (real) called with mode:', mode); }
-    function closeSaveModal() { console.log('closeSaveModal (real) called'); }
-    function copySaveToClipboard() { console.log('copySaveToClipboard (real) called'); }
-    function downloadSave() { console.log('downloadSave (real) called'); }
-    function importSave() { console.log('importSave (real) called'); }
-    function resetGame() { console.log('resetGame (real) called'); }
-    function softResetGame() { console.log('softResetGame (real) called'); }
-    function toggleSettingsModal() { console.log('toggleSettingsModal (real) called'); }
-    function toggleShopModal() { console.log('toggleShopModal (real) called'); }
-
-    // --- Wrappers for Logging ---
-    window.openSaveModal = function(mode) {
-      console.log('openSaveModal called with mode:', mode);
-      openSaveModal(mode);
-    };
-    window.closeSaveModal = function() {
-      console.log('closeSaveModal called');
-      closeSaveModal();
-    };
-    window.copySaveToClipboard = function() {
-      console.log('copySaveToClipboard called');
-      copySaveToClipboard();
-    };
-    window.downloadSave = function() {
-      console.log('downloadSave called');
-      downloadSave();
-    };
-    window.importSave = function() {
-      console.log('importSave called');
-      importSave();
-    };
-    window.resetGame = function() {
-      console.log('resetGame called');
-      resetGame();
-    };
-    window.softResetGame = function() {
-      console.log('softResetGame called');
-      softResetGame();
-    };
-    window.toggleSettingsModal = function() {
-      console.log('toggleSettingsModal called');
-      toggleSettingsModal();
-    };
-    window.toggleShopModal = function() {
-      console.log('toggleShopModal called');
-      toggleShopModal();
-    };
-
-    // Log clicks on the main click button
-    const clickBtn = document.getElementById('clickButton');
-    if (clickBtn) {
-      clickBtn.addEventListener('click', function() {
-        console.log('Main click button pressed');
-      });
-    }
-
-    // Log shop button clicks
-    ['autoClickerBtn','doublePointsBtn','goldenClickBtn','luckBoostBtn','timeFreezeBtn','goldenModeBtn'].forEach(id => {
-      const btn = document.getElementById(id);
-      if (btn) {
-        btn.addEventListener('click', function() {
-          console.log('Shop button clicked:', id);
-        });
-      }
-    });
-
-    // Log achievement section toggle
-    const achievementsHeader = document.getElementById('achievementsHeader');
-    if (achievementsHeader) {
-      achievementsHeader.addEventListener('click', function() {
-        console.log('Achievements section toggled');
-      });
-    }
-
-    // Log errors
-    const origConsoleError = console.error;
-    console.error = function(...args) {
-      origConsoleError.apply(console, args);
-      alert('Console error: ' + args.join(' '));
-    };
-
-    // Log all script errors
-    window.onerror = function(message, source, lineno, colno, error) {
-      console.log('Script error:', message, 'at', source + ':' + lineno + ':' + colno, error);
-    };
-
-    // Log when the page loads
-    console.log('Page loaded');
-  </script>
+  <script src="main.js"></script>
 </body>
 </html>
