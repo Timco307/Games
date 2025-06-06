@@ -13,8 +13,8 @@
       <div id="timer">Time for Z: 0s</div>
       <div id="pointsTopBar" style="margin-left:18px;font-weight:bold;color:#fff;">Points for Z: 0</div>
     </div>
-    <div id="settingsIcon">⚙️</div>
-    <div id="shopIcon">🛒</div>
+    <div id="settingsIcon" onclick="toggleSettingsModal()">⚙️</div>
+    <div id="shopIcon" onclick="toggleShopModal()">🛒</div>
   </div>
   <div id="settingsModal" class="modal">
     <div class="modal-content">
@@ -51,12 +51,12 @@
       <span class="close" onclick="if(window.toggleShopModal)window.toggleShopModal()">&times;</span>
       <h3>Shop Upgrades</h3>
       <p>Points for Z: <span id="pointsDisplayShop">0</span></p>
-      <button id="autoClickerBtn">Buy Auto Clicker (50 pts)</button>
-      <button id="doublePointsBtn">Buy Double Points (150 pts)</button>
-      <button id="goldenClickBtn">Buy Golden Click (200 pts)</button>
-      <button id="luckBoostBtn">Buy Luck Boost (300 pts)</button>
-      <button id="timeFreezeBtn">Buy Time Freeze (200 pts)</button>
-      <button id="goldenModeBtn">Buy Golden Mode (1000 pts)</button>
+      <button id="autoClickerBtn" onclick="purchaseAutoClicker()">Buy Auto Clicker (50 pts)</button>
+      <button id="doublePointsBtn" onclick="purchaseDoublePoints()">Buy Double Points (150 pts)</button>
+      <button id="goldenClickBtn" onclick="purchaseGoldenClick()">Buy Golden Click (200 pts)</button>
+      <button id="luckBoostBtn" onclick="purchaseLuckBoost()">Buy Luck Boost (300 pts)</button>
+      <button id="timeFreezeBtn" onclick="purchaseTimeFreeze()">Buy Time Freeze (200 pts)</button>
+      <button id="goldenModeBtn" onclick="purchaseGoldenMode()">Buy Golden Mode (1000 pts)</button>
       <div class="shop-status">
         <p>Auto Clickers: <span id="autoCountShop">0</span></p>
         <p>Double Points: <span id="doubleStatusShop">Off</span></p>
@@ -65,11 +65,12 @@
         <p>Time Freeze: <span id="timeFreezeStatusShop">Inactive</span></p>
         <p>Golden Mode: <span id="goldenModeStatusShop">Inactive</span></p>
       </div>
+      <div id="nextStageReqBox" style="margin:16px 0 8px 0;"></div>
       <button id="nextStageBtn" style="margin-top:16px;">Next Stage</button>
       <div style="margin-top:8px;font-weight:bold;">Stage for Z: <span id="stageDisplay">1</span></div>
     </div>
   </div>
-  <button id="clickButton" style="z-index:2;position:relative;">Click Me!</button>
+  <button id="clickButton" style="z-index:2;position:relative;" onclick="mainClick()">Click Me!</button>
   <div id="resultContainer">
     <p id="result"></p>
   </div>
@@ -151,6 +152,19 @@
         }
       };
     }
+    // Set game version and model in settings modal
+    document.addEventListener('DOMContentLoaded', function() {
+      if (typeof GAME_VERSION !== 'undefined') {
+        document.getElementById('gameVersion').textContent = GAME_VERSION;
+      } else {
+        document.getElementById('gameVersion').textContent = 'Z';
+      }
+      if (typeof GAME_MODEL !== 'undefined') {
+        document.getElementById('gameModel').textContent = GAME_MODEL;
+      } else {
+        document.getElementById('gameModel').textContent = 'Z';
+      }
+    });
   </script>
   <style>
     .main-panel-btn {

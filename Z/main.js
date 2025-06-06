@@ -238,7 +238,6 @@ function resetGame() {
   updateStageDisplay();
   const logList = document.getElementById('log');
   logList.innerHTML = '<li id="logFallback">No finds yet. Start clicking!</li>';
-  saveGameToStorage();
 }
 
 function softResetGame() {
@@ -271,38 +270,21 @@ function softResetGame() {
   updateStageDisplay();
   const logList = document.getElementById('log');
   logList.innerHTML = '<li id="logFallback">No finds yet. Start clicking!</li>';
-  saveGameToStorage();
 }
 
 // --- Achievements Logic ---
 function updateLogDisplay() {
   const logList = document.getElementById('log');
   logList.innerHTML = '';
-  // Make the log box itself two columns using flex
-  logList.style.display = 'flex';
-  logList.style.flexDirection = 'row';
-  logList.style.justifyContent = 'space-between';
-  logList.style.alignItems = 'flex-start';
-  logList.style.width = '100%';
-  // Split log into two columns
-  const half = Math.ceil(log.length / 2);
-  const col1 = log.slice(0, half);
-  const col2 = log.slice(half);
-  const colDiv1 = document.createElement('div');
-  const colDiv2 = document.createElement('div');
-  colDiv1.style.width = colDiv2.style.width = '48%';
-  col1.forEach(item => {
+  const rarityOrder = rarities.map(r => r.name);
+  log.forEach(item => {
     const li = document.createElement('li');
-    li.textContent = item;
-    colDiv1.appendChild(li);
+    const rObj = rarities.find(r => r.name === item);
+    const chance = rObj ? getRarityChance(rObj) : 0;
+    const pts = rarityPoints[item] || 0;
+    li.innerHTML = `<b>${item}</b> <span style='color:#888;font-size:0.9em;'>(Chance: ${chance.toFixed(5)}%, Points: ${pts})</span>`;
+    logList.appendChild(li);
   });
-  col2.forEach(item => {
-    const li = document.createElement('li');
-    li.textContent = item;
-    colDiv2.appendChild(li);
-  });
-  logList.appendChild(colDiv1);
-  logList.appendChild(colDiv2);
   if (log.length === 0) {
     logList.innerHTML = '<li id="logFallback">No finds yet. Start clicking!</li>';
   }
@@ -428,6 +410,15 @@ function startAutoClicker() {
   }
 }
 
+function startAutoClickers() {
+  if (autoClickerInterval) clearInterval(autoClickerInterval);
+  if (autoClickers > 0) {
+    autoClickerInterval = setInterval(() => {
+      for (let i = 0; i < autoClickers; i++) mainClick(true);
+    }, Math.max(2000 / autoClickers, 200)); // Minimum 200ms interval
+  }
+}
+
 function startTimer() {
   if (!timerInterval) {
     timerInterval = setInterval(() => {
@@ -471,22 +462,23 @@ function mainClick(isAuto) {
   // Pick a rarity
   let roll = Math.random() * 100;
   let sum = 0;
-  let found = 'Common';
-  let pool = rarities;
+  let rarityPool = rarities;
   if (luckBoostActive) {
-    pool = rarities.filter(r => r.name !== 'Common');
+    // Remove bottom-tier rarities (lowest 5) and shift up
+    const minIndex = 5;
+    rarityPool = rarities.slice(minIndex);
   }
+  let found = 'Common';
   if (goldenModeActive || (goldenClickActive && !isAuto)) {
     // Only allow legendary or above
-    pool = rarities.filter(r => {
-      const order = rarities.map(r => r.name);
-      return order.indexOf(r.name) >= order.indexOf('Legendary');
-    });
+    const order = rarities.map(r => r.name);
+    const legendaryIndex = order.indexOf('Legendary');
+    rarityPool = rarities.slice(legendaryIndex);
     goldenClickActive = false;
-    updateBuffTimers();
+    updateShopStatus();
+    updateShopButtonLabels();
   }
-  sum = 0;
-  for (let r of pool) {
+  for (let r of rarityPool) {
     let chance = getRarityChance(r);
     sum += chance;
     if (roll < sum) { found = r.name; break; }
@@ -497,7 +489,7 @@ function mainClick(isAuto) {
     // Sort unlockedRarities by rarity order
     const rarityOrder = rarities.map(r => r.name);
     unlockedRarities.sort((a, b) => rarityOrder.indexOf(a) - rarityOrder.indexOf(b));
-    if (!isAuto) document.getElementById('result').textContent = `Unlocked: ${found}`;
+    // Removed: document.getElementById('result').textContent = `Unlocked: ${found}`;
     updateUnlockedRaritiesBox();
   } else if (!isAuto) {
     document.getElementById('result').textContent = '';
@@ -518,9 +510,9 @@ function mainClick(isAuto) {
   points += pts;
   updatePointsDisplay();
   checkAchievements();
-  saveGameToStorage();
 }
 
+// --- Unlocked Rarities Box ---
 function updateUnlockedRaritiesBox() {
   const listDiv = document.getElementById('unlockedRaritiesList');
   if (!listDiv) return;
@@ -531,50 +523,75 @@ function updateUnlockedRaritiesBox() {
   }
   // Sort by rarity order
   const rarityOrder = rarities.map(r => r.name);
-  const sorted = unlockedRarities.slice().sort((a, b) => rarityOrder.indexOf(a) - rarityOrder.indexOf(b));
+  let sorted = unlockedRarities.slice().sort((a, b) => rarityOrder.indexOf(a) - rarityOrder.indexOf(b));
+  if (raritySortDescending) sorted = sorted.reverse();
   sorted.forEach(rarityName => {
     const rObj = rarities.find(r => r.name === rarityName);
     const chance = rObj ? getRarityChance(rObj) : 0;
+    const pts = rarityPoints[rarityName] || 0;
     const div = document.createElement('div');
     div.className = 'rarity-unlocked';
-    div.innerHTML = `<b>${rarityName}</b> | chance %: ${chance.toFixed(5)} | <span style='color:#888;font-size:0.9em;'>(Unlocked!)</span>`;
+    div.innerHTML = `<b>${rarityName}</b> | chance %: ${chance.toFixed(5)} | points: ${pts} | <span style='color:#888;font-size:0.9em;'>(Unlocked!)</span>`;
     listDiv.appendChild(div);
   });
+  // Add sort toggle button
+  let toggleBtn = document.getElementById('raritySortToggleBtn');
+  if (!toggleBtn) {
+    toggleBtn = document.createElement('button');
+    toggleBtn.id = 'raritySortToggleBtn';
+    toggleBtn.textContent = raritySortDescending ? 'Sort: Highest → Lowest' : 'Sort: Lowest → Highest';
+    toggleBtn.style.margin = '8px 0 12px 0';
+    toggleBtn.style.fontSize = '1em';
+    toggleBtn.onclick = function() {
+      raritySortDescending = !raritySortDescending;
+      toggleBtn.textContent = raritySortDescending ? 'Sort: Highest → Lowest' : 'Sort: Lowest → Highest';
+      updateUnlockedRaritiesBox();
+    };
+    listDiv.parentNode.insertBefore(toggleBtn, listDiv);
+  } else {
+    toggleBtn.textContent = raritySortDescending ? 'Sort: Highest → Lowest' : 'Sort: Lowest → Highest';
+  }
 }
 
-// --- Shop Purchase Logic ---
-function getShopCost(name) {
-  // Exponential scaling for shop prices
-  return Math.floor(baseShopCosts[name] * Math.pow(1.5, stage - 1));
+// --- Save Indicator Logic ---
+function showSaveIndicator(msg) {
+  let indicator = document.getElementById('saveIndicator');
+  if (!indicator) {
+    indicator = document.createElement('div');
+    indicator.id = 'saveIndicator';
+    indicator.style.position = 'fixed';
+    indicator.style.bottom = '24px';
+    indicator.style.right = '24px';
+    indicator.style.background = '#222';
+    indicator.style.color = '#fff';
+    indicator.style.padding = '10px 22px';
+    indicator.style.borderRadius = '12px';
+    indicator.style.fontSize = '1.1em';
+    indicator.style.zIndex = '9999';
+    indicator.style.opacity = '0';
+    indicator.style.transition = 'opacity 0.4s';
+    document.body.appendChild(indicator);
+  }
+  indicator.textContent = msg;
+  indicator.style.opacity = '1';
+  setTimeout(() => { indicator.style.opacity = '0'; }, 1200);
 }
-function updateShopButtonLabels() {
-  document.getElementById('autoClickerBtn').textContent = `Buy Auto Clicker (${getShopCost('Auto Clicker')} pts)`;
-  document.getElementById('doublePointsBtn').textContent = `Buy Double Points (${getShopCost('Double Points')} pts)`;
-  document.getElementById('goldenClickBtn').textContent = `Buy Golden Click (${getShopCost('Golden Click')} pts)`;
-  document.getElementById('luckBoostBtn').textContent = `Buy Luck Boost (${getShopCost('Luck Boost')} pts)`;
-  document.getElementById('timeFreezeBtn').textContent = `Buy Time Freeze (${getShopCost('Time Freeze')} pts)`;
-  document.getElementById('goldenModeBtn').textContent = `Buy Golden Mode (${getShopCost('Golden Mode')} pts)`;
-}
-function updateStageDisplay() {
-  document.getElementById('stageDisplay').textContent = stage;
-}
-function updateShopStatus() {
-  document.getElementById('autoCountShop').textContent = autoClickers;
-  document.getElementById('doubleStatusShop').textContent = doublePointsActive ? 'On' : 'Off';
-  document.getElementById('goldenStatusShop').textContent = goldenClickActive ? 'Ready' : 'Not Ready';
-  document.getElementById('luckBoostStatusShop').textContent = luckBoostActive ? 'Active' : 'Inactive';
-  document.getElementById('timeFreezeStatusShop').textContent = timeFreezeActive ? 'Active' : 'Inactive';
-  document.getElementById('goldenModeStatusShop').textContent = goldenModeActive ? 'Active' : 'Inactive';
-}
-function updateTimerDisplay() {
-  document.getElementById('timer').textContent = 'Time for Z: ' + timer + 's';
-}
-function updateRarestFindDisplay() {
-  document.getElementById('rarestFind').textContent = rarestFind || 'None';
-}
-function updateTotalClicksDisplay() {
-  document.getElementById('totalClicks').textContent = totalClicks;
-}
+
+// Patch saveGameToStorage to show indicator
+const origSaveGameToStorage = window.saveGameToStorage;
+window.saveGameToStorage = function() {
+  if (origSaveGameToStorage) origSaveGameToStorage();
+  showSaveIndicator('Auto-saved');
+};
+
+// Manual save shortcut
+window.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.altKey && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    if (window.saveGameToStorage) window.saveGameToStorage();
+    showSaveIndicator('Manually saved');
+  }
+});
 
 // --- Reset and Ascend Logic ---
 function resetGame() {
@@ -608,7 +625,6 @@ function resetGame() {
   updateStageDisplay();
   const logList = document.getElementById('log');
   logList.innerHTML = '<li id="logFallback">No finds yet. Start clicking!</li>';
-  saveGameToStorage();
 }
 
 function softResetGame() {
@@ -641,7 +657,6 @@ function softResetGame() {
   updateStageDisplay();
   const logList = document.getElementById('log');
   logList.innerHTML = '<li id="logFallback">No finds yet. Start clicking!</li>';
-  saveGameToStorage();
 }
 
 // --- Local Storage Save/Load ---
@@ -667,35 +682,324 @@ function loadGameFromStorage() {
   if (localStorage.getItem('totalClicks_for_model_Z')) totalClicks = JSON.parse(localStorage.getItem('totalClicks_for_model_Z'));
   if (localStorage.getItem('rarestFind_for_model_Z')) rarestFind = JSON.parse(localStorage.getItem('rarestFind_for_model_Z'));
   if (localStorage.getItem('log_for_model_Z')) log = JSON.parse(localStorage.getItem('log'));
+  if (!Array.isArray(log)) log = [];
   if (localStorage.getItem('achievements_for_model_Z')) {
     let loadedAchievements = JSON.parse(localStorage.getItem('achievements_for_model_Z'));
     achievements.forEach((a, i) => { if (loadedAchievements[i]) a.unlocked = loadedAchievements[i].unlocked; });
   }
   if (localStorage.getItem('unlockedRarities_for_model_Z')) unlockedRarities = JSON.parse(localStorage.getItem('unlockedRarities_for_model_Z'));
-  if (localStorage.getItem('autoClickers_for_model_Z')) autoClickers = JSON.parse(localStorage.getItem('autoClickers_for_model_Z'));
-  if (localStorage.getItem('doublePointsActive_for_model_Z')) doublePointsActive = JSON.parse(localStorage.getItem('doublePointsActive_for_model_Z'));
-  if (localStorage.getItem('goldenClickActive_for_model_Z')) goldenClickActive = JSON.parse(localStorage.getItem('goldenClickActive_for_model_Z'));
-  if (localStorage.getItem('luckBoostActive_for_model_Z')) luckBoostActive = JSON.parse(localStorage.getItem('luckBoostActive_for_model_Z'));
-  if (localStorage.getItem('timeFreezeActive_for_model_Z')) timeFreezeActive = JSON.parse(localStorage.getItem('timeFreezeActive_for_model_Z'));
-  if (localStorage.getItem('goldenModeActive_for_model_Z')) goldenModeActive = JSON.parse(localStorage.getItem('goldenModeActive_for_model_Z'));
-  if (localStorage.getItem('stage_for_model_Z')) stage = JSON.parse(localStorage.getItem('stage_for_model_Z'));
-  if (localStorage.getItem('timer_for_model_Z')) timer = JSON.parse(localStorage.getItem('timer_for_model_Z'));
+  if (localStorage.getItem('autoClickers_for_model_Z')) autoClickers = JSON.parse(localStorage.getItem('autoClickers'));
+  let val;
+  val = localStorage.getItem('luckBoostActive_for_model_Z');
+  luckBoostActive = safeBool(val);
+  val = localStorage.getItem('doublePointsActive_for_model_Z');
+  doublePointsActive = safeBool(val);
+  val = localStorage.getItem('goldenClickActive_for_model_Z');
+  goldenClickActive = safeBool(val);
+  val = localStorage.getItem('timeFreezeActive_for_model_Z');
+  timeFreezeActive = safeBool(val);
+  val = localStorage.getItem('goldenModeActive_for_model_Z');
+  goldenModeActive = safeBool(val);
+  if (localStorage.getItem('stage_for_model_Z')) stage = JSON.parse(localStorage.getItem('stage'));
+  if (localStorage.getItem('timer_for_model_Z')) timer = JSON.parse(localStorage.getItem('timer'));
 }
 
 // Load game state on start
 loadGameFromStorage();
+// Update all UI on page load/refresh
+if (typeof updatePointsDisplay === 'function') updatePointsDisplay();
+if (typeof updateTotalClicksDisplay === 'function') updateTotalClicksDisplay();
+if (typeof updateRarestFindDisplay === 'function') updateRarestFindDisplay();
+if (typeof updateUnlockedRaritiesBox === 'function') updateUnlockedRaritiesBox();
+if (typeof updateAchievementsDisplay === 'function') updateAchievementsDisplay();
+if (typeof updateShopStatus === 'function') updateShopStatus();
+if (typeof updateShopButtonLabels === 'function') updateShopButtonLabels();
+if (typeof updateStageDisplay === 'function') updateStageDisplay();
+if (typeof updateTimerDisplay === 'function') updateTimerDisplay();
+if (typeof updateBuffTimers === 'function') updateBuffTimers();
+if (typeof updateLogDisplay === 'function') updateLogDisplay();
+
+// --- Rarity Sort Toggle ---
+let raritySortDescending = false;
+
+// --- Timer Logic ---
+function updateTimerDisplay() {
+  let t = timer;
+  let sec = t % 60;
+  t = Math.floor(t / 60);
+  let min = t % 60;
+  t = Math.floor(t / 60);
+  let hr = t % 24;
+  t = Math.floor(t / 24);
+  let day = t % 7;
+  let week = Math.floor(t / 7);
+  let parts = [];
+  if (week > 0) parts.push(week + 'w');
+  if (day > 0) parts.push(day + 'd');
+  if (hr > 0) parts.push(hr + 'h');
+  if (min > 0) parts.push(min + 'm');
+  if (sec > 0 || parts.length === 0) parts.push(sec + 's');
+  const timerEl = document.getElementById('timer');
+  if (timerEl) timerEl.textContent = 'Time for Z: ' + parts.join(' ');
+}
+setInterval(function() {
+  if (!timeFreezeActive) {
+    timer++;
+    updateTimerDisplay();
+  }
+}, 1000);
+
+// --- Shop Cost Helper ---
+function getShopCost(name) {
+  return Math.floor(baseShopCosts[name] * Math.pow(1.5, stage - 1));
+}
+
+// --- Shop Purchase Functions ---
+function purchaseAutoClicker() {
+  const cost = getShopCost('Auto Clicker');
+  if (points >= cost) {
+    points -= cost;
+    autoClickers++;
+    updatePointsDisplay();
+    updateShopStatus();
+    updateShopButtonLabels();
+    startAutoClickers();
+  } else {
+    alert('Not enough points!');
+  }
+}
+function purchaseDoublePoints() {
+  const cost = getShopCost('Double Points');
+  if (points >= cost && !doublePointsActive) {
+    points -= cost;
+    doublePointsActive = true;
+    updatePointsDisplay();
+    updateShopStatus();
+    updateShopButtonLabels();
+    let dpTimer = setTimeout(() => {
+      doublePointsActive = false;
+      updateShopStatus();
+      updateShopButtonLabels();
+    }, 30000);
+    if (!window._dpTimers) window._dpTimers = [];
+    window._dpTimers.push(dpTimer);
+  } else {
+    alert('Not enough points or already active!');
+  }
+}
+function purchaseGoldenClick() {
+  const cost = getShopCost('Golden Click');
+  if (points >= cost && !goldenClickActive) {
+    points -= cost;
+    goldenClickActive = true;
+    updatePointsDisplay();
+    updateShopStatus();
+    updateShopButtonLabels();
+  } else {
+    alert('Not enough points or already ready!');
+  }
+}
+function purchaseLuckBoost() {
+  const cost = getShopCost('Luck Boost');
+  if (points >= cost && !luckBoostActive) {
+    points -= cost;
+    luckBoostActive = true;
+    updatePointsDisplay();
+    updateShopStatus();
+    updateShopButtonLabels();
+    let lbTimer = setTimeout(() => {
+      luckBoostActive = false;
+      updateShopStatus();
+      updateShopButtonLabels();
+    }, 30000);
+    if (!window._lbTimers) window._lbTimers = [];
+    window._lbTimers.push(lbTimer);
+  } else {
+    alert('Not enough points or already active!');
+  }
+}
+function purchaseTimeFreeze() {
+  const cost = getShopCost('Time Freeze');
+  if (points >= cost && !timeFreezeActive) {
+    points -= cost;
+    timeFreezeActive = true;
+    updatePointsDisplay();
+    updateShopStatus();
+    updateShopButtonLabels();
+    // Pause all timers
+    if (window._dpTimers) window._dpTimers.forEach(t => clearTimeout(t));
+    if (window._lbTimers) window._lbTimers.forEach(t => clearTimeout(t));
+    let tfTimer = setTimeout(() => {
+      timeFreezeActive = false;
+      updateShopStatus();
+      updateShopButtonLabels();
+      // Resume Double Points and Luck Boost if they were active
+      if (doublePointsActive) purchaseDoublePoints();
+      if (luckBoostActive) purchaseLuckBoost();
+    }, 30000);
+    if (!window._tfTimers) window._tfTimers = [];
+    window._tfTimers.push(tfTimer);
+  } else {
+    alert('Not enough points or already active!');
+  }
+}
+function purchaseGoldenMode() {
+  const cost = getShopCost('Golden Mode');
+  if (points >= cost && !goldenModeActive) {
+    points -= cost;
+    goldenModeActive = true;
+    updatePointsDisplay();
+    updateShopStatus();
+    updateShopButtonLabels();
+    setTimeout(() => {
+      goldenModeActive = false;
+      updateShopStatus();
+      updateShopButtonLabels();
+    }, 5000);
+  } else {
+    alert('Not enough points or already active!');
+  }
+}
 window.purchaseAutoClicker = purchaseAutoClicker;
 window.purchaseDoublePoints = purchaseDoublePoints;
 window.purchaseGoldenClick = purchaseGoldenClick;
 window.purchaseLuckBoost = purchaseLuckBoost;
 window.purchaseTimeFreeze = purchaseTimeFreeze;
 window.purchaseGoldenMode = purchaseGoldenMode;
-window.softResetGame = softResetGame;
-window.resetGame = resetGame;
-window.toggleSettingsModal = toggleSettingsModal;
-window.openSaveModal = openSaveModal;
-window.closeSaveModal = closeSaveModal;
-window.copySaveToClipboard = copySaveToClipboard;
-window.downloadSave = downloadSave;
-window.importSave = importSave;
-window.showPanel = showPanel;
+window.startAutoClickers = startAutoClickers;
+
+// --- Update Shop Status ---
+function updateShopStatus() {
+  if (document.getElementById('autoCountShop')) document.getElementById('autoCountShop').textContent = autoClickers;
+  if (document.getElementById('doubleStatusShop')) document.getElementById('doubleStatusShop').textContent = doublePointsActive ? 'On' : 'Off';
+  if (document.getElementById('goldenStatusShop')) document.getElementById('goldenStatusShop').textContent = goldenClickActive ? 'Ready' : 'Not Ready';
+  if (document.getElementById('luckBoostStatusShop')) document.getElementById('luckBoostStatusShop').textContent = luckBoostActive ? 'Active' : 'Inactive';
+  if (document.getElementById('timeFreezeStatusShop')) document.getElementById('timeFreezeStatusShop').textContent = timeFreezeActive ? 'Active' : 'Inactive';
+  if (document.getElementById('goldenModeStatusShop')) document.getElementById('goldenModeStatusShop').textContent = goldenModeActive ? 'Active' : 'Inactive';
+}
+
+// --- Ensure all update functions are called on load ---
+window.addEventListener('DOMContentLoaded', function() {
+  if (typeof updatePointsDisplay === 'function') updatePointsDisplay();
+  if (typeof updateTotalClicksDisplay === 'function') updateTotalClicksDisplay();
+  if (typeof updateRarestFindDisplay === 'function') updateRarestFindDisplay();
+  if (typeof updateUnlockedRaritiesBox === 'function') updateUnlockedRaritiesBox();
+  if (typeof updateAchievementsDisplay === 'function') updateAchievementsDisplay();
+  if (typeof updateShopStatus === 'function') updateShopStatus();
+  if (typeof updateShopButtonLabels === 'function') updateShopButtonLabels();
+  if (typeof updateStageDisplay === 'function') updateStageDisplay();
+  if (typeof updateTimerDisplay === 'function') updateTimerDisplay();
+  if (typeof updateBuffTimers === 'function') updateBuffTimers();
+  if (typeof updateLogDisplay === 'function') updateLogDisplay();
+});
+
+// --- Next Stage Logic ---
+function canAdvanceStage() {
+  // Must have unlocked Sigma or above and have at least 8000 points * (1.5)^(stage-1)
+  const rarityOrder = rarities.map(r => r.name);
+  const sigmaIndex = rarityOrder.indexOf('Sigma');
+  const hasSigmaOrAbove = unlockedRarities.some(r => rarityOrder.indexOf(r) >= sigmaIndex);
+  const requiredPoints = Math.floor(8000 * Math.pow(1.5, stage - 1));
+  return hasSigmaOrAbove && points >= requiredPoints;
+}
+function advanceStage() {
+  if (!canAdvanceStage()) {
+    const requiredPoints = Math.floor(8000 * Math.pow(1.5, stage - 1));
+    alert('You must unlock Sigma or above and have at least ' + requiredPoints + ' points to advance!');
+    return;
+  }
+  stage++;
+  // Reward: points go up by 5000 per stage (example, adjust as needed)
+  points += 5000 * stage;
+  updateStageDisplay();
+  updateShopButtonLabels();
+  updatePointsDisplay();
+  updateShopStatus();
+  updateLogDisplay();
+  saveGameToStorage();
+}
+window.advanceStage = advanceStage;
+
+// Add event listener for nextStageBtn
+if (document.getElementById('nextStageBtn')) {
+  document.getElementById('nextStageBtn').onclick = advanceStage;
+}
+
+// Update next stage requirements display
+function updateNextStageReq() {
+  // Requirements: must have unlocked 'Sigma' or above and enough points
+  const rarityOrder = rarities.map(r => r.name);
+  const sigmaIndex = rarityOrder.indexOf('Sigma');
+  let hasSigmaOrAbove = unlockedRarities.some(r => rarityOrder.indexOf(r) >= sigmaIndex);
+  let requiredPoints = Math.floor(8000 * Math.pow(1.5, stage - 1));
+  let reqText = `<b>Next Stage Requirements:</b><br>`;
+  reqText += `Unlock <b>Sigma</b> or above: ` + (hasSigmaOrAbove ? '<span style="color:green;">✔</span>' : '<span style="color:red;">✘</span>') + '<br>';
+  reqText += `Points: <span id='nextStagePointsText'>${points} / ${requiredPoints}</span>`;
+  // Progress bar
+  let percent = Math.min(100, Math.floor((points / requiredPoints) * 100));
+  reqText += `<div style='background:#eee;border-radius:8px;height:18px;width:100%;margin:6px 0;'><div style='background:#4caf50;height:100%;width:${percent}%;border-radius:8px;transition:width 0.3s;'></div></div>`;
+  const reqBox = document.getElementById('nextStageReqBox');
+  if (reqBox) reqBox.innerHTML = reqText;
+}
+// Patch point/rarity update functions to also update requirements
+(function() {
+  const origUpdatePointsDisplay = window.updatePointsDisplay;
+  window.updatePointsDisplay = function() {
+    if (origUpdatePointsDisplay) origUpdatePointsDisplay();
+    updateNextStageReq();
+  };
+  const origUpdateUnlockedRaritiesBox = window.updateUnlockedRaritiesBox;
+  window.updateUnlockedRaritiesBox = function() {
+    if (origUpdateUnlockedRaritiesBox) origUpdateUnlockedRaritiesBox();
+    updateNextStageReq();
+  };
+})();
+// Call on load
+if (document.getElementById('nextStageReqBox')) updateNextStageReq();
+
+// --- Auto-save interval logic ---
+let autoSaveIntervalSec = 10;
+let autoSaveTimer = null;
+function setAutoSaveInterval(sec) {
+  if (typeof sec !== 'number' || isNaN(sec) || sec < 5) sec = 5;
+  autoSaveIntervalSec = sec;
+  if (autoSaveTimer) clearInterval(autoSaveTimer);
+  autoSaveTimer = setInterval(() => {
+    if (typeof saveGameToStorage === 'function') saveGameToStorage();
+  }, autoSaveIntervalSec * 1000);
+}
+
+// --- Settings UI for auto-save interval ---
+function injectAutoSaveSetting() {
+  const settingsModal = document.getElementById('settingsModal');
+  if (!settingsModal) return;
+  let existing = document.getElementById('autoSaveSettingRow');
+  if (existing) return;
+  const row = document.createElement('div');
+  row.id = 'autoSaveSettingRow';
+  row.style.margin = '12px 0';
+  row.innerHTML = '<label for="autoSaveIntervalInput"><b>Auto-save interval (sec):</b></label> <input id="autoSaveIntervalInput" type="number" min="5" max="120" value="' + autoSaveIntervalSec + '" style="width:60px;">';
+  const saveSection = settingsModal.querySelector('.save-section') || settingsModal.querySelector('.stats-section');
+  if (saveSection) saveSection.parentNode.insertBefore(row, saveSection);
+  else settingsModal.querySelector('.modal-content').appendChild(row);
+  document.getElementById('autoSaveIntervalInput').addEventListener('change', function() {
+    let v = parseInt(this.value, 10);
+    if (isNaN(v) || v < 5) v = 5;
+    setAutoSaveInterval(v);
+    this.value = v;
+  });
+}
+
+// --- Patch settings modal open to inject auto-save setting ---
+const origToggleSettingsModal = window.toggleSettingsModal;
+window.toggleSettingsModal = function() {
+  if (origToggleSettingsModal) origToggleSettingsModal();
+  setTimeout(injectAutoSaveSetting, 100);
+};
+// --- Start auto-save on load ---
+setAutoSaveInterval(autoSaveIntervalSec);
+
+// --- Ensure boolean flags never null ---
+function safeBool(val) {
+  return val === true || val === 'true';
+}
