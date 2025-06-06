@@ -125,12 +125,49 @@ rarities.forEach((r, i) => {
 let points = 0;
 let unlockedRarities = [];
 
+// --- Buff State ---
+let autoClickers = 0;
+let doublePointsActive = false;
+let doublePointsTimeout = null;
+let goldenClickActive = false;
+let luckBoostActive = false;
+let luckBoostTimeout = null;
+let timeFreezeActive = false;
+let timeFreezeTimeout = null;
+let goldenModeActive = false;
+let goldenModeTimeout = null;
+let autoClickerInterval = null;
+let timer = 0;
+let timerInterval = null;
+
+// --- Shop Purchase Logic ---
+let stage = 1;
+let baseShopCosts = {
+  'Auto Clicker': 50,
+  'Double Points': 150,
+  'Golden Click': 200,
+  'Luck Boost': 300,
+  'Time Freeze': 200,
+  'Golden Mode': 1000
+};
+
+// --- Achievements Logic ---
+const rarityAchievements = rarities.map(r => ({
+  id: 'rarity_' + r.name.replace(/\s+/g, '').toLowerCase(),
+  name: r.name + ' Found',
+  desc: 'Unlock the ' + r.name + ' rarity.',
+  unlocked: false,
+  rarity: r.name
+}));
+achievements = achievements.concat(rarityAchievements);
+
+// --- Display Logic ---
 function updatePointsDisplay() {
-  const el = document.getElementById('pointsDisplayShop');
-  if (el) el.textContent = points;
+  document.getElementById('pointsTopBar').textContent = 'Points for Z: ' + points;
+  const shopPoints = document.getElementById('pointsDisplayShop');
+  if (shopPoints) shopPoints.textContent = points;
 }
 
-// --- Modal and Button Logic ---
 function toggleSettingsModal() {
   const modal = document.getElementById('settingsModal');
   modal.style.display = (modal.style.display === 'block') ? 'none' : 'block';
@@ -168,6 +205,8 @@ function downloadSave() {
 function importSave() {
   alert('Import not implemented.');
 }
+
+// --- Game Logic ---
 function resetGame() {
   // Hard reset: everything
   points = 0;
@@ -236,16 +275,6 @@ function softResetGame() {
 }
 
 // --- Achievements Logic ---
-// Add rarity achievements
-const rarityAchievements = rarities.map(r => ({
-  id: 'rarity_' + r.name.replace(/\s+/g, '').toLowerCase(),
-  name: r.name + ' Found',
-  desc: 'Unlock the ' + r.name + ' rarity.',
-  unlocked: false,
-  rarity: r.name
-}));
-achievements = achievements.concat(rarityAchievements);
-
 function updateLogDisplay() {
   const logList = document.getElementById('log');
   logList.innerHTML = '';
@@ -347,20 +376,6 @@ function checkAchievements() {
 }
 
 // --- Buff State ---
-let autoClickers = 0;
-let doublePointsActive = false;
-let doublePointsTimeout = null;
-let goldenClickActive = false;
-let luckBoostActive = false;
-let luckBoostTimeout = null;
-let timeFreezeActive = false;
-let timeFreezeTimeout = null;
-let goldenModeActive = false;
-let goldenModeTimeout = null;
-let autoClickerInterval = null;
-let timer = 0;
-let timerInterval = null;
-
 function updateBuffTimers() {
   const buffDiv = document.getElementById('buffTimers');
   if (!buffDiv) return;
@@ -503,6 +518,7 @@ function mainClick(isAuto) {
   points += pts;
   updatePointsDisplay();
   checkAchievements();
+  saveGameToStorage();
 }
 
 function updateUnlockedRaritiesBox() {
@@ -527,15 +543,6 @@ function updateUnlockedRaritiesBox() {
 }
 
 // --- Shop Purchase Logic ---
-let stage = 1;
-let baseShopCosts = {
-  'Auto Clicker': 50,
-  'Double Points': 150,
-  'Golden Click': 200,
-  'Luck Boost': 300,
-  'Time Freeze': 200,
-  'Golden Mode': 1000
-};
 function getShopCost(name) {
   // Exponential scaling for shop prices
   return Math.floor(baseShopCosts[name] * Math.pow(1.5, stage - 1));
@@ -551,29 +558,6 @@ function updateShopButtonLabels() {
 function updateStageDisplay() {
   document.getElementById('stageDisplay').textContent = stage;
 }
-function nextStage() {
-  stage++;
-  updateStageDisplay();
-  updateShopButtonLabels();
-  // Make rarities harder: decrease all non-Common chances by 5% (relative), add the total removed to Common
-  let totalRemoved = 0;
-  rarities.forEach(r => {
-    if (r.name !== 'Common') {
-      let prev = r.scaledChance !== undefined ? r.scaledChance : r.chance;
-      let removed = prev * 0.05;
-      r.scaledChance = prev - removed;
-      totalRemoved += removed;
-    }
-  });
-  // Add the total removed to Common
-  let common = rarities.find(r => r.name === 'Common');
-  if (common) {
-    let prev = common.scaledChance !== undefined ? common.scaledChance : common.chance;
-    common.scaledChance = prev + totalRemoved;
-  }
-  // Optionally, reset some buffs or give a reward
-}
-
 function updateShopStatus() {
   document.getElementById('autoCountShop').textContent = autoClickers;
   document.getElementById('doubleStatusShop').textContent = doublePointsActive ? 'On' : 'Off';
@@ -582,550 +566,121 @@ function updateShopStatus() {
   document.getElementById('timeFreezeStatusShop').textContent = timeFreezeActive ? 'Active' : 'Inactive';
   document.getElementById('goldenModeStatusShop').textContent = goldenModeActive ? 'Active' : 'Inactive';
 }
-
-function buyShopItem(cost, name) {
-  cost = getShopCost(name);
-  const shopMsg = document.getElementById('shopMessage');
-  if (points < cost) {
-    if (shopMsg) shopMsg.textContent = 'Not enough points!';
-    return;
-  }
-  if (name === 'Auto Clicker') {
-    points -= cost;
-    autoClickers++;
-    startAutoClicker();
-    updatePointsDisplay();
-    if (shopMsg) shopMsg.textContent = 'Purchased: Auto Clicker! (' + autoClickers + ' total)';
-  } else if (name === 'Double Points') {
-    points -= cost;
-    updatePointsDisplay();
-    doublePointsActive = true;
-    updateBuffTimers();
-    doublePointsTimeout = setTimeout(() => {
-      doublePointsActive = false;
-      updateBuffTimers();
-      updateShopStatus();
-    }, 60000);
-    if (shopMsg) shopMsg.textContent = 'Double Points active for 60 seconds!';
-  } else if (name === 'Golden Click') {
-    points -= cost;
-    updatePointsDisplay();
-    goldenClickActive = true;
-    updateBuffTimers();
-    if (shopMsg) shopMsg.textContent = 'Golden Click ready! Next click is Legendary or above.';
-  } else if (name === 'Luck Boost') {
-    points -= cost;
-    updatePointsDisplay();
-    luckBoostActive = true;
-    updateBuffTimers();
-    luckBoostTimeout = setTimeout(() => {
-      luckBoostActive = false;
-      updateBuffTimers();
-      updateShopStatus();
-    }, 60000);
-    if (shopMsg) shopMsg.textContent = 'Luck Boost active for 60 seconds!';
-  } else if (name === 'Time Freeze') {
-    points -= cost;
-    updatePointsDisplay();
-    timeFreezeActive = true;
-    updateBuffTimers();
-    timeFreezeTimeout = setTimeout(() => {
-      timeFreezeActive = false;
-      updateBuffTimers();
-      updateShopStatus();
-    }, 60000);
-    if (shopMsg) shopMsg.textContent = 'Timer frozen for 60 seconds!';
-  } else if (name === 'Golden Mode') {
-    points -= cost;
-    updatePointsDisplay();
-    goldenModeActive = true;
-    updateBuffTimers();
-    goldenModeTimeout = setTimeout(() => {
-      goldenModeActive = false;
-      updateBuffTimers();
-      updateShopStatus();
-    }, 5000);
-    if (shopMsg) shopMsg.textContent = 'Golden Mode: All clicks are Legendary or above for 5 seconds!';
-  }
-  updateShopStatus();
+function updateTimerDisplay() {
+  document.getElementById('timer').textContent = 'Time for Z: ' + timer + 's';
 }
-
-// --- Achievements Section Toggle ---
-function toggleAchievementsSection() {
-  const section = document.getElementById('achievementsSection');
-  section.style.display = (section.style.display === 'none') ? '' : 'none';
+function updateRarestFindDisplay() {
+  document.getElementById('rarestFind').textContent = rarestFind || 'None';
 }
-
-// --- Shop and Settings Icon Logic ---
-window.addEventListener('DOMContentLoaded', function() {
-  // Modal open/close
-  document.getElementById('shopIcon').addEventListener('click', toggleShopModal);
-  document.getElementById('settingsIcon').addEventListener('click', toggleSettingsModal);
-  document.querySelector('#shopModal .close').addEventListener('click', function(e) {
-    document.getElementById('shopModal').style.display = 'none';
-  });
-  document.querySelector('#settingsModal .close').addEventListener('click', function(e) {
-    document.getElementById('settingsModal').style.display = 'none';
-  });
-  document.querySelector('#saveModal .close').addEventListener('click', closeSaveModal);
-  // Save modal
-  document.querySelectorAll('button[onclick^="openSaveModal"]').forEach(btn => {
-    btn.addEventListener('click', function(e) {
-      const mode = btn.textContent.includes('Export') ? 'export' : 'import';
-      if (mode === 'export') exportSave();
-      document.getElementById('saveModalTitle').textContent = mode === 'export' ? 'Export Save' : 'Import Save';
-      document.getElementById('copySaveBtn').style.display = mode === 'export' ? '' : 'none';
-      document.getElementById('downloadSaveBtn').style.display = mode === 'export' ? '' : 'none';
-      document.getElementById('importSaveBtn').style.display = mode === 'import' ? '' : 'none';
-      document.getElementById('saveTextarea').value = mode === 'export' ? encodeSave(getSaveData()) : '';
-      document.getElementById('importError').textContent = '';
-    });
-  });
-  document.getElementById('importSaveBtn').addEventListener('click', importSave);
-  // Reset buttons
-  document.getElementById('softResetButton').addEventListener('click', softResetGame);
-  document.getElementById('resetButton').addEventListener('click', resetGame);
-  const cheaterBtn = document.getElementById('resetButtonCheater');
-  if (cheaterBtn) cheaterBtn.addEventListener('click', resetGame);
-  // Shop buttons
-  document.getElementById('autoClickerBtn').onclick = function() { buyShopItem(50, 'Auto Clicker'); };
-  document.getElementById('doublePointsBtn').onclick = function() { buyShopItem(150, 'Double Points'); };
-  document.getElementById('goldenClickBtn').onclick = function() { buyShopItem(200, 'Golden Click'); };
-  document.getElementById('luckBoostBtn').onclick = function() { buyShopItem(300, 'Luck Boost'); };
-  document.getElementById('timeFreezeBtn').onclick = function() { buyShopItem(200, 'Time Freeze'); };
-  document.getElementById('goldenModeBtn').onclick = function() { buyShopItem(1000, 'Golden Mode'); };
-  // Main click button
-  document.getElementById('clickButton').addEventListener('click', mainClick);
-  // Achievements section toggle
-  document.getElementById('achievementsHeader').addEventListener('click', toggleAchievementsSection);
-  // Hide all modals on page load
-  document.getElementById('settingsModal').style.display = 'none';
-  document.getElementById('shopModal').style.display = 'none';
-  document.getElementById('saveModal').style.display = 'none';
-  document.getElementById('result').textContent = '';
+function updateTotalClicksDisplay() {
   document.getElementById('totalClicks').textContent = totalClicks;
-  document.getElementById('rarestFind').textContent = 'None';
-  startTimer();
-  document.getElementById('timer').textContent = `Time: 0s`;
+}
+
+// --- Reset and Ascend Logic ---
+function resetGame() {
+  // Hard reset: everything
+  points = 0;
+  totalClicks = 0;
+  rarestFind = null;
+  log = [];
+  unlockedRarities = [];
+  autoClickers = 0;
+  doublePointsActive = false;
+  goldenClickActive = false;
+  luckBoostActive = false;
+  timeFreezeActive = false;
+  goldenModeActive = false;
+  timer = 0;
+  stage = 1;
+  achievements.forEach(a => a.unlocked = false);
+  updateStageDisplay();
+  updateShopButtonLabels();
+  rarities.forEach(r => { r.scaledChance = r.chance; });
+  updatePointsDisplay();
+  updateTotalClicksDisplay();
+  updateRarestFindDisplay();
+  updateTimerDisplay();
   updateBuffTimers();
-  updateAchievementsDisplay();
-  updatePointsDisplay();
-  updateUnlockedRaritiesBox();
-  // Load from cookie on start
-  loadGameFromStorage();
-  document.getElementById('totalClicks').textContent = totalClicks;
-  document.getElementById('rarestFind').textContent = rarestFind || 'None';
-  document.getElementById('timer').textContent = `Time: ${timer}s`;
-  updatePointsDisplay();
-  updateAchievementsDisplay();
-  updateUnlockedRaritiesBox();
-  // Update log
-  const logList = document.getElementById('log');
-  logList.innerHTML = '';
-  log.forEach(item => {
-    const li = document.createElement('li');
-    li.textContent = item;
-    logList.appendChild(li);
-  });
-  if (log.length === 0) {
-    logList.innerHTML = '<li id="logFallback">No finds yet. Start clicking!</li>';
-  }
-  // Show game version and model in settings
-  document.getElementById('gameVersion').textContent = GAME_VERSION;
-  document.getElementById('gameModel').textContent = GAME_MODEL;
-  // Add notification div
-  let notif = document.createElement('div');
-  notif.id = 'saveNotification';
-  notif.style.position = 'fixed';
-  notif.style.top = '16px';
-  notif.style.right = '16px';
-  notif.style.background = '#2ecc40';
-  notif.style.color = 'white';
-  notif.style.padding = '10px 18px';
-  notif.style.borderRadius = '8px';
-  notif.style.fontWeight = 'bold';
-  notif.style.fontSize = '16px';
-  notif.style.zIndex = 9999;
-  notif.style.display = 'none';
-  document.body.appendChild(notif);
-
-  function showSaveNotification(msg) {
-    notif.textContent = msg;
-    notif.style.display = 'block';
-    setTimeout(() => { notif.style.display = 'none'; }, 1800);
-  }
-
-  // Listen for Ctrl+Alt+S to save
-  document.addEventListener('keydown', function(e) {
-    if (e.ctrlKey && e.altKey && e.key.toLowerCase() === 's') {
-      saveGameToStorage();
-      showSaveNotification('Game saved to local storage!');
-    }
-  });
-
-  // Patch saveGameToStorage to show notification on auto-save
-  const origSaveGameToStorage = saveGameToStorage;
-  saveGameToStorage = function() {
-    origSaveGameToStorage();
-    showSaveNotification('Game auto-saved!');
-  };
-  // Auto-save every 10 seconds
-  setInterval(saveGameToStorage, 10000);
-
-  // Next Stage (Ascend) button logic
-  document.getElementById('nextStageBtn').onclick = function() {
-    // Ascend: reset all except achievements
-    points = 0;
-    totalClicks = 0;
-    rarestFind = null;
-    log = [];
-    unlockedRarities = [];
-    autoClickers = 0;
-    doublePointsActive = false;
-    goldenClickActive = false;
-    luckBoostActive = false;
-    timeFreezeActive = false;
-    goldenModeActive = false;
-    timer = 0;
-    // Stage up and make game harder
-    stage++;
-    updateStageDisplay();
-    updateShopButtonLabels();
-    rarities.forEach(r => { r.scaledChance = r.chance / Math.pow(1.5, stage - 1); });
-    // Update UI
-    document.getElementById('totalClicks').textContent = totalClicks;
-    document.getElementById('rarestFind').textContent = 'None';
-    document.getElementById('timer').textContent = `Time: 0s`;
-    updateBuffTimers();
-    updateAchievementsDisplay();
-    updatePointsDisplay();
-    updateUnlockedRaritiesBox();
-    updateShopStatus();
-    updateShopButtonLabels();
-    updateStageDisplay();
-    // Clear log
-    const logList = document.getElementById('log');
-    logList.innerHTML = '<li id="logFallback">No finds yet. Start clicking!</li>';
-    showSaveNotification('Ascended! Stage up: game is harder and shop is more expensive.');
-    saveGameToStorage();
-  };
-});
-// --- Cookie & Local Storage Save/Load Helpers ---
-function saveGameToStorage() {
-  const saveData = getSaveData();
-  document.cookie = 'rc_save=' + encodeURIComponent(JSON.stringify(saveData)) + ';path=/;max-age=31536000';
-  localStorage.setItem('rc_save', JSON.stringify(saveData));
-}
-function loadGameFromStorage() {
-  let data = null;
-  if (localStorage.getItem('rc_save')) {
-    try { data = JSON.parse(localStorage.getItem('rc_save')); } catch (e) {}
-  }
-  if (!data) {
-    const match = document.cookie.match(/(?:^|;)\s*rc_save=([^;]*)/);
-    if (match) {
-      try { data = JSON.parse(decodeURIComponent(match[1])); } catch (e) {}
-    }
-  }
-  if (data && typeof data === 'object') {
-    points = data.points || 0;
-    totalClicks = data.totalClicks || 0;
-    rarestFind = data.rarestFind || null;
-    unlockedRarities = Array.isArray(data.logData) ? data.logData : [];
-    log = Array.isArray(data.log) ? data.log : [];
-    timer = data.timer || 0;
-    stage = data.stage || 1;
-    // Restore shop status for all buffs
-    autoClickers = (data.shopStatus && typeof data.shopStatus.autoClickers !== 'undefined') ? data.shopStatus.autoClickers : (data.autoClickers || 0);
-    doublePointsActive = (data.shopStatus && typeof data.shopStatus.doublePointsActive !== 'undefined') ? data.shopStatus.doublePointsActive : !!data.doublePointsActive;
-    goldenClickActive = (data.shopStatus && typeof data.shopStatus.goldenClickActive !== 'undefined') ? data.shopStatus.goldenClickActive : !!data.goldenClickActive;
-    luckBoostActive = (data.shopStatus && typeof data.shopStatus.luckBoostActive !== 'undefined') ? data.shopStatus.luckBoostActive : !!data.luckBoostActive;
-    timeFreezeActive = (data.shopStatus && typeof data.shopStatus.timeFreezeActive !== 'undefined') ? data.shopStatus.timeFreezeActive : !!data.timeFreezeActive;
-    goldenModeActive = (data.shopStatus && typeof data.shopStatus.goldenModeActive !== 'undefined') ? data.shopStatus.goldenModeActive : !!data.goldenModeActive;
-    // Restore achievements
-    if (data.achievements) {
-      achievements.forEach(a => {
-        a.unlocked = !!data.achievements[a.id];
-      });
-    }
-    updateStageDisplay();
-    updateShopButtonLabels();
-    // Re-apply rarity scaling
-    rarities.forEach(r => { r.scaledChance = r.chance / Math.pow(1.25, stage - 1); });
-  }
-}
-
-// --- Save System ---
-function getSaveData() {
-  return {
-    version: GAME_VERSION,
-    model: GAME_MODEL,
-    points,
-    totalClicks,
-    rarestFind,
-    logData: unlockedRarities.slice(),
-    log: log.slice(),
-    achievements: Object.fromEntries(achievements.map(a => [a.id, !!a.unlocked])),
-    autoClickers,
-    doublePointsActive,
-    goldenClickActive,
-    luckBoostActive,
-    timeFreezeActive,
-    goldenModeActive,
-    stage,
-    timer,
-    secondsPlayed: timer,
-    backgrounds: (typeof backgrounds !== 'undefined' ? backgrounds : []),
-    settings: (typeof settings !== 'undefined' ? settings : {}),
-    gameVersion: GAME_VERSION,
-    gameModel: GAME_MODEL
-  };
-}
-function checksum(str) {
-  // Simple checksum: sum char codes (not strong encryption, but basic tamper check)
-  let c1 = 0, c2 = 5381;
-  for (let i = 0; i < str.length; i++) {
-    c1 = (c1 + str.charCodeAt(i)) % 1000000007;
-    c2 = ((c2 << 5) + c2) + str.charCodeAt(i);
-    c2 = c2 % 1000000007;
-  }
-  return [c1.toString(36), c2.toString(36)];
-}
-function encodeSave(data) {
-  // Encrypt (obfuscate) with base64 and add checksums
-  const json = JSON.stringify(data);
-  const b64 = btoa(unescape(encodeURIComponent(json)));
-  const [c1, c2] = checksum(b64);
-  return `RARITYCLICKER-SAVE-V1\n${c1}\n${c2}\n${b64}`;
-}
-function decodeSave(str) {
-  const lines = str.trim().split(/\r?\n/);
-  if (lines[0] !== 'RARITYCLICKER-SAVE-V1') return { error: 'Invalid save header.' };
-  const [c1, c2, b64] = [lines[1], lines[2], lines.slice(3).join('')];
-  const [ec1, ec2] = checksum(b64);
-  if (c1 !== ec1 || c2 !== ec2) return { error: 'Checksum failed.' };
-  try {
-    const json = decodeURIComponent(escape(atob(b64)));
-    const data = JSON.parse(json);
-    return { data };
-  } catch (e) {
-    return { error: 'Corrupt save data.' };
-  }
-}
-function exportSave() {
-  // Always use encodeSave to export with base64 and checksums
-  const saveStr = encodeSave(getSaveData());
-  document.getElementById('saveTextarea').value = saveStr;
-  document.getElementById('copySaveBtn').style.display = '';
-  document.getElementById('downloadSaveBtn').style.display = '';
-  document.getElementById('importSaveBtn').style.display = 'none';
-  document.getElementById('importError').textContent = '';
-}
-function importSave() {
-  let val = document.getElementById('saveTextarea').value;
-  const { data, error } = decodeSave(val);
-  if (error) {
-    document.getElementById('importError').textContent = error;
-    if (error === 'Checksum failed.') {
-      document.getElementById('cheaterOverlay').style.display = 'block';
-    }
-    return;
-  }
-  if (data.model !== GAME_MODEL) {
-    document.getElementById('importError').textContent = 'Wrong model! This save is for a different version of the game.';
-    return;
-  }
-  // Overwrite all state
-  points = data.points || 0;
-  totalClicks = data.totalClicks || 0;
-  rarestFind = data.rarestFind || null;
-  unlockedRarities = Array.isArray(data.logData) ? data.logData : [];
-  log = Array.isArray(data.log) ? data.log : [];
-  timer = data.timer || 0;
-  stage = data.stage || 1;
-  autoClickers = data.autoClickers || 0;
-  doublePointsActive = !!data.doublePointsActive;
-  goldenClickActive = !!data.goldenClickActive;
-  luckBoostActive = !!data.luckBoostActive;
-  timeFreezeActive = !!data.timeFreezeActive;
-  goldenModeActive = !!data.goldenModeActive;
-  // Achievements
-  if (data.achievements) {
-    achievements.forEach(a => {
-      a.unlocked = !!data.achievements[a.id];
-    });
-  }
-  // Optionally restore backgrounds/settings if present
-  if (data.backgrounds) window.backgrounds = data.backgrounds;
-  if (data.settings) window.settings = data.settings;
-  // Save to storage
-  saveGameToStorage();
-  // Update UI
-  document.getElementById('totalClicks').textContent = totalClicks;
-  document.getElementById('rarestFind').textContent = rarestFind || 'None';
-  document.getElementById('timer').textContent = `Time: ${timer}s`;
-  updatePointsDisplay();
   updateAchievementsDisplay();
   updateUnlockedRaritiesBox();
   updateShopStatus();
   updateShopButtonLabels();
   updateStageDisplay();
-  // Update log
-  updateLogDisplay();
-  document.getElementById('importError').textContent = 'Import successful!';
+  const logList = document.getElementById('log');
+  logList.innerHTML = '<li id="logFallback">No finds yet. Start clicking!</li>';
+  saveGameToStorage();
 }
 
-// --- Save on interval only (not on every change) ---
-setInterval(saveGameToStorage, 10000);
+function softResetGame() {
+  // Soft reset: keep achievements, reset everything else
+  points = 0;
+  totalClicks = 0;
+  rarestFind = null;
+  log = [];
+  unlockedRarities = [];
+  autoClickers = 0;
+  doublePointsActive = false;
+  goldenClickActive = false;
+  luckBoostActive = false;
+  timeFreezeActive = false;
+  goldenModeActive = false;
+  timer = 0;
+  stage = 1;
+  updateStageDisplay();
+  updateShopButtonLabels();
+  rarities.forEach(r => { r.scaledChance = r.chance; });
+  updatePointsDisplay();
+  updateTotalClicksDisplay();
+  updateRarestFindDisplay();
+  updateTimerDisplay();
+  updateBuffTimers();
+  updateAchievementsDisplay();
+  updateUnlockedRaritiesBox();
+  updateShopStatus();
+  updateShopButtonLabels();
+  updateStageDisplay();
+  const logList = document.getElementById('log');
+  logList.innerHTML = '<li id="logFallback">No finds yet. Start clicking!</li>';
+  saveGameToStorage();
+}
 
-// --- On page load ---
-window.addEventListener('DOMContentLoaded', function() {
-  // Modal open/close
-  document.getElementById('shopIcon').addEventListener('click', toggleShopModal);
-  document.getElementById('settingsIcon').addEventListener('click', toggleSettingsModal);
-  document.querySelector('#shopModal .close').addEventListener('click', function(e) {
-    document.getElementById('shopModal').style.display = 'none';
-  });
-  document.querySelector('#settingsModal .close').addEventListener('click', function(e) {
-    document.getElementById('settingsModal').style.display = 'none';
-  });
-  document.querySelector('#saveModal .close').addEventListener('click', closeSaveModal);
-  // Save modal
-  document.querySelectorAll('button[onclick^="openSaveModal"]').forEach(btn => {
-    btn.addEventListener('click', function(e) {
-      const mode = btn.textContent.includes('Export') ? 'export' : 'import';
-      if (mode === 'export') exportSave();
-      document.getElementById('saveModalTitle').textContent = mode === 'export' ? 'Export Save' : 'Import Save';
-      document.getElementById('copySaveBtn').style.display = mode === 'export' ? '' : 'none';
-      document.getElementById('downloadSaveBtn').style.display = mode === 'export' ? '' : 'none';
-      document.getElementById('importSaveBtn').style.display = mode === 'import' ? '' : 'none';
-      document.getElementById('saveTextarea').value = mode === 'export' ? encodeSave(getSaveData()) : '';
-      document.getElementById('importError').textContent = '';
-    });
-  });
-  document.getElementById('importSaveBtn').addEventListener('click', importSave);
-  // Reset buttons
-  document.getElementById('softResetButton').addEventListener('click', softResetGame);
-  document.getElementById('resetButton').addEventListener('click', resetGame);
-  const cheaterBtn = document.getElementById('resetButtonCheater');
-  if (cheaterBtn) cheaterBtn.addEventListener('click', resetGame);
-  // Shop buttons
-  document.getElementById('autoClickerBtn').onclick = function() { buyShopItem(50, 'Auto Clicker'); };
-  document.getElementById('doublePointsBtn').onclick = function() { buyShopItem(150, 'Double Points'); };
-  document.getElementById('goldenClickBtn').onclick = function() { buyShopItem(200, 'Golden Click'); };
-  document.getElementById('luckBoostBtn').onclick = function() { buyShopItem(300, 'Luck Boost'); };
-  document.getElementById('timeFreezeBtn').onclick = function() { buyShopItem(200, 'Time Freeze'); };
-  document.getElementById('goldenModeBtn').onclick = function() { buyShopItem(1000, 'Golden Mode'); };
-  // Main click button
-  document.getElementById('clickButton').addEventListener('click', mainClick);
-  // Achievements section toggle
-  document.getElementById('achievementsHeader').addEventListener('click', toggleAchievementsSection);
-  // Hide all modals on page load
-  document.getElementById('settingsModal').style.display = 'none';
-  document.getElementById('shopModal').style.display = 'none';
-  document.getElementById('saveModal').style.display = 'none';
-  document.getElementById('result').textContent = '';
-  document.getElementById('totalClicks').textContent = totalClicks;
-  document.getElementById('rarestFind').textContent = 'None';
-  startTimer();
-  document.getElementById('timer').textContent = `Time: 0s`;
-  updateBuffTimers();
-  updateAchievementsDisplay();
-  updatePointsDisplay();
-  updateUnlockedRaritiesBox();
-  // Load from cookie on start
-  loadGameFromStorage();
-  document.getElementById('totalClicks').textContent = totalClicks;
-  document.getElementById('rarestFind').textContent = rarestFind || 'None';
-  document.getElementById('timer').textContent = `Time: ${timer}s`;
-  updatePointsDisplay();
-  updateAchievementsDisplay();
-  updateUnlockedRaritiesBox();
-  // Update log
-  const logList = document.getElementById('log');
-  logList.innerHTML = '';
-  log.forEach(item => {
-    const li = document.createElement('li');
-    li.textContent = item;
-    logList.appendChild(li);
-  });
-  if (log.length === 0) {
-    logList.innerHTML = '<li id="logFallback">No finds yet. Start clicking!</li>';
+// --- Local Storage Save/Load ---
+function saveGameToStorage() {
+  localStorage.setItem('points_for_model_Z', JSON.stringify(points));
+  localStorage.setItem('totalClicks_for_model_Z', JSON.stringify(totalClicks));
+  localStorage.setItem('rarestFind_for_model_Z', JSON.stringify(rarestFind));
+  localStorage.setItem('log_for_model_Z', JSON.stringify(log));
+  localStorage.setItem('achievements_for_model_Z', JSON.stringify(achievements));
+  localStorage.setItem('unlockedRarities_for_model_Z', JSON.stringify(unlockedRarities));
+  localStorage.setItem('autoClickers_for_model_Z', JSON.stringify(autoClickers));
+  localStorage.setItem('doublePointsActive_for_model_Z', JSON.stringify(doublePointsActive));
+  localStorage.setItem('goldenClickActive_for_model_Z', JSON.stringify(goldenClickActive));
+  localStorage.setItem('luckBoostActive_for_model_Z', JSON.stringify(luckBoostActive));
+  localStorage.setItem('timeFreezeActive_for_model_Z', JSON.stringify(timeFreezeActive));
+  localStorage.setItem('goldenModeActive_for_model_Z', JSON.stringify(goldenModeActive));
+  localStorage.setItem('stage_for_model_Z', JSON.stringify(stage));
+  localStorage.setItem('timer_for_model_Z', JSON.stringify(timer));
+}
+
+function loadGameFromStorage() {
+  if (localStorage.getItem('points_for_model_Z')) points = JSON.parse(localStorage.getItem('points_for_model_Z'));
+  if (localStorage.getItem('totalClicks_for_model_Z')) totalClicks = JSON.parse(localStorage.getItem('totalClicks_for_model_Z'));
+  if (localStorage.getItem('rarestFind_for_model_Z')) rarestFind = JSON.parse(localStorage.getItem('rarestFind_for_model_Z'));
+  if (localStorage.getItem('log_for_model_Z')) log = JSON.parse(localStorage.getItem('log_for_model_Z'));
+  if (localStorage.getItem('achievements_for_model_Z')) {
+    let loadedAchievements = JSON.parse(localStorage.getItem('achievements_for_model_Z'));
+    achievements.forEach((a, i) => { if (loadedAchievements[i]) a.unlocked = loadedAchievements[i].unlocked; });
   }
-});
-// --- Patch Save Modal Buttons ---
-window.addEventListener('DOMContentLoaded', function() {
-  // Modal open/close
-  document.getElementById('shopIcon').addEventListener('click', toggleShopModal);
-  document.getElementById('settingsIcon').addEventListener('click', toggleSettingsModal);
-  document.querySelector('#shopModal .close').addEventListener('click', function(e) {
-    document.getElementById('shopModal').style.display = 'none';
-  });
-  document.querySelector('#settingsModal .close').addEventListener('click', function(e) {
-    document.getElementById('settingsModal').style.display = 'none';
-  });
-  document.querySelector('#saveModal .close').addEventListener('click', closeSaveModal);
-  // Save modal
-  document.querySelectorAll('button[onclick^="openSaveModal"]').forEach(btn => {
-    btn.addEventListener('click', function(e) {
-      const mode = btn.textContent.includes('Export') ? 'export' : 'import';
-      if (mode === 'export') exportSave();
-      document.getElementById('saveModalTitle').textContent = mode === 'export' ? 'Export Save' : 'Import Save';
-      document.getElementById('copySaveBtn').style.display = mode === 'export' ? '' : 'none';
-      document.getElementById('downloadSaveBtn').style.display = mode === 'export' ? '' : 'none';
-      document.getElementById('importSaveBtn').style.display = mode === 'import' ? '' : 'none';
-      document.getElementById('saveTextarea').value = mode === 'export' ? encodeSave(getSaveData()) : '';
-      document.getElementById('importError').textContent = '';
-    });
-  });
-  document.getElementById('importSaveBtn').addEventListener('click', importSave);
-  // Reset buttons
-  document.getElementById('softResetButton').addEventListener('click', softResetGame);
-  document.getElementById('resetButton').addEventListener('click', resetGame);
-  const cheaterBtn = document.getElementById('resetButtonCheater');
-  if (cheaterBtn) cheaterBtn.addEventListener('click', resetGame);
-  // Shop buttons
-  document.getElementById('autoClickerBtn').onclick = function() { buyShopItem(50, 'Auto Clicker'); };
-  document.getElementById('doublePointsBtn').onclick = function() { buyShopItem(150, 'Double Points'); };
-  document.getElementById('goldenClickBtn').onclick = function() { buyShopItem(200, 'Golden Click'); };
-  document.getElementById('luckBoostBtn').onclick = function() { buyShopItem(300, 'Luck Boost'); };
-  document.getElementById('timeFreezeBtn').onclick = function() { buyShopItem(200, 'Time Freeze'); };
-  document.getElementById('goldenModeBtn').onclick = function() { buyShopItem(1000, 'Golden Mode'); };
-  // Main click button
-  document.getElementById('clickButton').addEventListener('click', mainClick);
-  // Achievements section toggle
-  document.getElementById('achievementsHeader').addEventListener('click', toggleAchievementsSection);
-  // Hide all modals on page load
-  document.getElementById('settingsModal').style.display = 'none';
-  document.getElementById('shopModal').style.display = 'none';
-  document.getElementById('saveModal').style.display = 'none';
-  document.getElementById('result').textContent = '';
-  document.getElementById('totalClicks').textContent = totalClicks;
-  document.getElementById('rarestFind').textContent = 'None';
-  startTimer();
-  document.getElementById('timer').textContent = `Time: 0s`;
-  updateBuffTimers();
-  updateAchievementsDisplay();
-  updatePointsDisplay();
-  updateUnlockedRaritiesBox();
-  // Load from cookie on start
-  loadGameFromStorage();
-  document.getElementById('totalClicks').textContent = totalClicks;
-  document.getElementById('rarestFind').textContent = rarestFind || 'None';
-  document.getElementById('timer').textContent = `Time: ${timer}s`;
-  updatePointsDisplay();
-  updateAchievementsDisplay();
-  updateUnlockedRaritiesBox();
-  // Update log
-  const logList = document.getElementById('log');
-  logList.innerHTML = '';
-  log.forEach(item => {
-    const li = document.createElement('li');
-    li.textContent = item;
-    logList.appendChild(li);
-  });
-  if (log.length === 0) {
-    logList.innerHTML = '<li id="logFallback">No finds yet. Start clicking!</li>';
-  }
-});
-//# sourceMappingURL=rarity_clicker.js.map
+  if (localStorage.getItem('unlockedRarities_for_model_Z')) unlockedRarities = JSON.parse(localStorage.getItem('unlockedRarities_for_model_Z'));
+  if (localStorage.getItem('autoClickers_for_model_Z')) autoClickers = JSON.parse(localStorage.getItem('autoClickers_for_model_Z'));
+  if (localStorage.getItem('doublePointsActive_for_model_Z')) doublePointsActive = JSON.parse(localStorage.getItem('doublePointsActive_for_model_Z'));
+  if (localStorage.getItem('goldenClickActive_for_model_Z')) goldenClickActive = JSON.parse(localStorage.getItem('goldenClickActive_for_model_Z'));
+  if (localStorage.getItem('luckBoostActive_for_model_Z')) luckBoostActive = JSON.parse(localStorage.getItem('luckBoostActive_for_model_Z'));
+  if (localStorage.getItem('timeFreezeActive_for_model_Z')) timeFreezeActive = JSON.parse(localStorage.getItem('timeFreezeActive_for_model_Z'));
+  if (localStorage.getItem('goldenModeActive_for_model_Z')) goldenModeActive = JSON.parse(localStorage.getItem('goldenModeActive_for_model_Z'));
+  if (localStorage.getItem('stage_for_model_Z')) stage = JSON.parse(localStorage.getItem('stage_for_model_Z'));
+  if (localStorage.getItem('timer_for_model_Z')) timer = JSON.parse(localStorage.getItem('timer_for_model_Z'));
+}
+
+// Load game state on start
+loadGameFromStorage();

@@ -10,8 +10,8 @@
 <body>
   <div id="header">
     <div style="display:flex;align-items:center;gap:18px;">
-      <div id="timer">Time: 0s</div>
-      <div id="pointsTopBar" style="margin-left:18px;font-weight:bold;color:#fff;">Points: 0</div>
+      <div id="timer">Time for Z: 0s</div>
+      <div id="pointsTopBar" style="margin-left:18px;font-weight:bold;color:#fff;">Points for Z: 0</div>
     </div>
     <div id="settingsIcon">⚙️</div>
     <div id="shopIcon">🛒</div>
@@ -22,8 +22,8 @@
       <h3>Settings</h3>
       <div class="stats-section">
         <h4>Stats for Nerds</h4>
-        <p>Total Clicks: <span id="totalClicks">0</span></p>
-        <p>Rarest Find: <span id="rarestFind">None</span></p>
+        <p>Total Clicks for Z: <span id="totalClicks">0</span></p>
+        <p>Rarest Find for Z: <span id="rarestFind">None</span></p>
         <div>
           <h5>Rarity Chances:</h5>
           <ul id="chancesList"></ul>
@@ -50,7 +50,7 @@
     <div class="modal-content shop-modal-content">
       <span class="close" onclick="if(window.toggleShopModal)window.toggleShopModal()">&times;</span>
       <h3>Shop Upgrades</h3>
-      <p>Points: <span id="pointsDisplayShop">0</span></p>
+      <p>Points for Z: <span id="pointsDisplayShop">0</span></p>
       <button id="autoClickerBtn">Buy Auto Clicker (50 pts)</button>
       <button id="doublePointsBtn">Buy Double Points (150 pts)</button>
       <button id="goldenClickBtn">Buy Golden Click (200 pts)</button>
@@ -66,7 +66,7 @@
         <p>Golden Mode: <span id="goldenModeStatusShop">Inactive</span></p>
       </div>
       <button id="nextStageBtn" style="margin-top:16px;">Next Stage</button>
-      <div style="margin-top:8px;font-weight:bold;">Stage: <span id="stageDisplay">1</span></div>
+      <div style="margin-top:8px;font-weight:bold;">Stage for Z: <span id="stageDisplay">1</span></div>
     </div>
   </div>
   <button id="clickButton" style="z-index:2;position:relative;">Click Me!</button>
@@ -137,7 +137,17 @@
       window.updatePointsDisplay = function() {
         origUpdatePointsDisplay();
         if (typeof points !== 'undefined') {
-          document.getElementById('pointsTopBar').textContent = 'Points: ' + points;
+          document.getElementById('pointsTopBar').textContent = 'Points for Z: ' + points;
+        }
+      };
+    }
+    // Update timer in top bar
+    if (window.updateTimerDisplay) {
+      const origUpdateTimerDisplay = window.updateTimerDisplay;
+      window.updateTimerDisplay = function() {
+        origUpdateTimerDisplay();
+        if (typeof timer !== 'undefined') {
+          document.getElementById('timer').textContent = 'Time for Z: ' + timer + 's';
         }
       };
     }
