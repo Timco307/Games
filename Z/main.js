@@ -666,7 +666,7 @@ function loadGameFromStorage() {
   if (localStorage.getItem('points_for_model_Z')) points = JSON.parse(localStorage.getItem('points_for_model_Z'));
   if (localStorage.getItem('totalClicks_for_model_Z')) totalClicks = JSON.parse(localStorage.getItem('totalClicks_for_model_Z'));
   if (localStorage.getItem('rarestFind_for_model_Z')) rarestFind = JSON.parse(localStorage.getItem('rarestFind_for_model_Z'));
-  if (localStorage.getItem('log_for_model_Z')) log = JSON.parse(localStorage.getItem('log_for_model_Z'));
+  if (localStorage.getItem('log_for_model_Z')) log = JSON.parse(localStorage.getItem('log'));
   if (localStorage.getItem('achievements_for_model_Z')) {
     let loadedAchievements = JSON.parse(localStorage.getItem('achievements_for_model_Z'));
     achievements.forEach((a, i) => { if (loadedAchievements[i]) a.unlocked = loadedAchievements[i].unlocked; });
@@ -684,3 +684,18 @@ function loadGameFromStorage() {
 
 // Load game state on start
 loadGameFromStorage();
+window.purchaseAutoClicker = purchaseAutoClicker;
+window.purchaseDoublePoints = purchaseDoublePoints;
+window.purchaseGoldenClick = purchaseGoldenClick;
+window.purchaseLuckBoost = purchaseLuckBoost;
+window.purchaseTimeFreeze = purchaseTimeFreeze;
+window.purchaseGoldenMode = purchaseGoldenMode;
+window.softResetGame = softResetGame;
+window.resetGame = resetGame;
+window.toggleSettingsModal = toggleSettingsModal;
+window.openSaveModal = openSaveModal;
+window.closeSaveModal = closeSaveModal;
+window.copySaveToClipboard = copySaveToClipboard;
+window.downloadSave = downloadSave;
+window.importSave = importSave;
+window.showPanel = showPanel;
